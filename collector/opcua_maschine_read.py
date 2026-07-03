@@ -6,8 +6,8 @@ from opcua import Client
 
 
 # Machine-specific configuration: adjust these two values.
-OPCUA_ENDPOINT = "opc.tcp://192.168.1.100:4840"
-OPCUA_NODE_ID = "ns=2;s=Machine.Temperature"
+OPCUA_ENDPOINT = "opc.tcp://10.195.222.80:4840"
+OPCUA_NODE_ID = 'ns=3;s="OPCUA_Dataset"."Prozessdaten"."ST02_Wanne_01"."Temperatur_IST"'
 OPCUA_TIMEOUT_SECONDS = 5.0
 
 
