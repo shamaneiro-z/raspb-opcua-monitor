@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: OPCUA Dashboards
+    orgId: 1
+    folder: OPCUA
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards

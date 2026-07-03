@@ -1,0 +1,66 @@
+name: rasp-maschine-monitor
+
+services:
+  influxdb:
+    image: influxdb:2.7
+    container_name: influxdb
+    restart: unless-stopped
+    ports:
+      - "8086:8086"
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: ${INFLUXDB_USERNAME:-admin}
+      DOCKER_INFLUXDB_INIT_PASSWORD: ${INFLUXDB_PASSWORD:-adminadminadmin}
+      DOCKER_INFLUXDB_INIT_ORG: ${INFLUXDB_ORG:-rasp-monitor}
+      DOCKER_INFLUXDB_INIT_BUCKET: ${INFLUXDB_BUCKET:-machine-data}
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUXDB_TOKEN:-replace-with-strong-token}
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+      - influxdb-config:/etc/influxdb2
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: grafana
+    restart: unless-stopped
+    depends_on:
+      - influxdb
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      INFLUXDB_ORG: ${INFLUXDB_ORG:-rasp-monitor}
+      INFLUXDB_BUCKET: ${INFLUXDB_BUCKET:-machine-data}
+      INFLUXDB_TOKEN: ${INFLUXDB_TOKEN:-replace-with-strong-token}
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+
+  opcua-collector:
+    build:
+      context: ./collector
+    container_name: opcua-collector
+    restart: unless-stopped
+    depends_on:
+      - influxdb
+    environment:
+      OPCUA_ENDPOINT: ${OPCUA_ENDPOINT:-opc.tcp://192.168.1.100:4840}
+      OPCUA_SECURITY_MODE: ${OPCUA_SECURITY_MODE:-None}
+      OPCUA_SECURITY_POLICY: ${OPCUA_SECURITY_POLICY:-None}
+      OPCUA_USERNAME: ${OPCUA_USERNAME:-}
+      OPCUA_PASSWORD: ${OPCUA_PASSWORD:-}
+      OPCUA_NODE_IDS: ${OPCUA_NODE_IDS:-ns=2;s=Machine.Temperature,ns=2;s=Machine.Pressure,ns=2;s=Machine.Speed}
+      OPCUA_POLL_INTERVAL_MS: ${OPCUA_POLL_INTERVAL_MS:-1000}
+      INFLUX_URL: ${INFLUX_URL:-http://influxdb:8086}
+      INFLUX_TOKEN: ${INFLUXDB_TOKEN:-replace-with-strong-token}
+      INFLUX_ORG: ${INFLUXDB_ORG:-rasp-monitor}
+      INFLUX_BUCKET: ${INFLUXDB_BUCKET:-machine-data}
+      INFLUX_MEASUREMENT: ${INFLUX_MEASUREMENT:-opcua_metrics}
+      INFLUX_TAG_MACHINE: ${INFLUX_TAG_MACHINE:-machine_1}
+
+volumes:
+  influxdb-data:
+  influxdb-config:
+  grafana-data:
