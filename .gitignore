@@ -9,7 +9,7 @@ venv/
 ENV/
 
 # Wheels (generated locally for offline builds)
-collector/wheels/
+/collector/wheels/
 
 # IDE
 .vscode/
@@ -22,7 +22,3 @@ collector/wheels/
 .DS_Store
 Thumbs.db
 
-# Project
-.env
-!.env.example
-*.log
