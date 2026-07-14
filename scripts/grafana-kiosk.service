@@ -1,0 +1,16 @@
+[Unit]
+Description=Grafana OPC UA Dashboard Kiosk
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=pi
+Environment="DISPLAY=:0"
+Environment="XAUTHORITY=/home/pi/.Xauthority"
+ExecStart=/opt/rasp-maschine-monitor/scripts/grafana-kiosk.sh
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical-session.target
