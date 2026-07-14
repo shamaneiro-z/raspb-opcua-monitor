@@ -18,10 +18,70 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": null,
   "links": [],
   "liveNow": false,
   "panels": [
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb-main"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^ns=3;s=\"OPCUA_Dataset\"\\.\"E_10_Jena\"\\.\"e10Status\"$/",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.1.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-main"
+          },
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"${measurement}\")\n  |> filter(fn: (r) => r._field == \"value_str\")\n  |> filter(fn: (r) => r.machine == \"${machine}\")\n  |> filter(fn: (r) => r.node_id =~ /E_10_Jena/)\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 1)\n  |> keep(columns: [\"_time\", \"_value\", \"node_id\"])",
+          "refId": "A"
+        }
+      ],
+      "title": "Latest E_10_Jena Status",
+      "type": "stat"
+    },
     {
       "datasource": {
         "type": "influxdb",
@@ -82,10 +142,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 18,
-        "w": 24,
+        "h": 9,
+        "w": 12,
         "x": 0,
-        "y": 0
+        "y": 6
       },
       "id": 1,
       "options": {
@@ -107,11 +167,195 @@
             "type": "influxdb",
             "uid": "influxdb-main"
           },
-          "query": "from(bucket: \"${bucket}\")\\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\\n  |> filter(fn: (r) => r._measurement == \"${measurement}\")\\n  |> filter(fn: (r) => r._field == \"value\")\\n  |> filter(fn: (r) => r.machine == \"${machine}\")\\n  |> group(columns: [\"node_id\"])\\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\\n  |> yield(name: \"mean\")",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"${measurement}\")\n  |> filter(fn: (r) => r._field == \"value\")\n  |> filter(fn: (r) => r.machine == \"${machine}\")\n  |> filter(fn: (r) => r.node_id =~ /Temperatur/)\n  |> group(columns: [\"node_id\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"mean\")",
           "refId": "A"
         }
       ],
-      "title": "OPC UA Signals",
+      "title": "Temperature Nodes",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb-main"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 9,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 4,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 6
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.1.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-main"
+          },
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"${measurement}\")\n  |> filter(fn: (r) => r._field == \"value\")\n  |> filter(fn: (r) => r.machine == \"${machine}\")\n  |> filter(fn: (r) => r.node_id =~ /ST10_Wanne_09/ )\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"mean\")",
+          "refId": "A"
+        }
+      ],
+      "title": "Leitwert ST10_Wanne_09",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb-main"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 9,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 4,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 15
+      },
+      "id": 3,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.1.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-main"
+          },
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"${measurement}\")\n  |> filter(fn: (r) => r._field == \"value\")\n  |> filter(fn: (r) => r.machine == \"${machine}\")\n  |> filter(fn: (r) => r.node_id =~ /ST13_Wanne_12/ )\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"mean\")",
+          "refId": "A"
+        }
+      ],
+      "title": "Leitwert ST13_Wanne_12",
       "type": "timeseries"
     }
   ],
@@ -124,11 +368,6 @@
   "templating": {
     "list": [
       {
-        "current": {
-          "selected": true,
-          "text": "machine-data",
-          "value": "machine-data"
-        },
         "hide": 2,
         "name": "bucket",
         "query": "machine-data",
@@ -136,11 +375,6 @@
         "type": "constant"
       },
       {
-        "current": {
-          "selected": true,
-          "text": "opcua_metrics",
-          "value": "opcua_metrics"
-        },
         "hide": 2,
         "name": "measurement",
         "query": "opcua_metrics",
@@ -148,21 +382,9 @@
         "type": "constant"
       },
       {
-        "current": {
-          "selected": true,
-          "text": "machine_1",
-          "value": "machine_1"
-        },
         "hide": 0,
         "label": "Machine",
         "name": "machine",
-        "options": [
-          {
-            "selected": true,
-            "text": "machine_1",
-            "value": "machine_1"
-          }
-        ],
         "query": "machine_1",
         "skipUrlSync": false,
         "type": "constant"
@@ -170,13 +392,13 @@
     ]
   },
   "time": {
-    "from": "now-15m",
+    "from": "now-5m",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "browser",
   "title": "OPC UA Machine Overview",
   "uid": "opcua-overview",
-  "version": 1,
+  "version": 10,
   "weekStart": ""
 }

@@ -1,6 +1,7 @@
 import logging
 import os
 import time
+from datetime import datetime, timezone
 
 from influxdb_client import InfluxDBClient, Point, WriteOptions
 from influxdb_client.client.write_api import SYNCHRONOUS
@@ -114,6 +115,28 @@ def main() -> None:
                     timestamp = source_ts or server_ts
                     value_float = to_float(value)
 
+                    logger.info(
+                        "Read node=%s value=%r source_ts=%s server_ts=%s",
+                        node_id,
+                        value,
+                        source_ts,
+                        server_ts,
+                    )
+
+                    if timestamp is not None:
+                        if timestamp.tzinfo is None:
+                            timestamp = timestamp.replace(tzinfo=timezone.utc)
+                        now = datetime.now(timezone.utc)
+                        if timestamp > now:
+                            logger.warning(
+                                "Node %s timestamp is in the future (%s), defaulting to now",
+                                node_id,
+                                timestamp,
+                            )
+                            timestamp = now
+                    else:
+                        timestamp = datetime.now(timezone.utc)
+
                     if value_float is not None:
                         point = (
                             Point(measurement)
@@ -139,6 +162,12 @@ def main() -> None:
                     logger.warning("Failed reading node %s: %s", node_id, exc)
 
             if points:
+                logger.info(
+                    "Writing %d points to bucket=%s org=%s",
+                    len(points),
+                    influx_bucket,
+                    influx_org,
+                )
                 influx_writer.write(bucket=influx_bucket, org=influx_org, record=points)
                 logger.info("Wrote %d points", len(points))
 
