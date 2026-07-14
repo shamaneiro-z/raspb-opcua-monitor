@@ -37,7 +37,7 @@ def to_float(value):
         return None
 
 
-async def configure_security(client: Client, mode_name: str, policy_name: str) -> None:
+def configure_security(client: Client, mode_name: str, policy_name: str) -> None:
     mode_map = {
         "None": ua.MessageSecurityMode.None_,
         "Sign": ua.MessageSecurityMode.Sign,
@@ -82,7 +82,7 @@ async def main() -> None:
 
     client = Client(endpoint)
     if security_mode != "None" or security_policy != "None":
-        await configure_security(client, security_mode, security_policy)
+        configure_security(client, security_mode, security_policy)
 
     if username and password:
         client.set_user(username)
@@ -96,10 +96,9 @@ async def main() -> None:
 
     try:
         async with client:
-            await client.connect()
             logger.info("Connected to OPC UA server")
 
-            nodes = {node_id: await client.get_node(node_id) for node_id in node_ids}
+            nodes = {node_id: client.get_node(node_id) for node_id in node_ids}
 
             while True:
                 points = []
