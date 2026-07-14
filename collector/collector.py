@@ -105,7 +105,7 @@ async def main() -> None:
 
                 for node_id, node in nodes.items():
                     try:
-                        data_value = await node.get_data_value()
+                        data_value = await node.read_data_value()
                         value = data_value.Value.Value
                         source_ts = data_value.SourceTimestamp
                         server_ts = data_value.ServerTimestamp
