@@ -1,7 +1,6 @@
 import logging
 import os
 import time
-from datetime import datetime, timezone
 
 from influxdb_client import InfluxDBClient, Point, WriteOptions
 from influxdb_client.client.write_api import SYNCHRONOUS
@@ -103,25 +102,38 @@ def main() -> None:
         nodes = {node_id: client.get_node(node_id) for node_id in node_ids}
 
         while True:
-            timestamp = datetime.now(timezone.utc)
             points = []
 
             for node_id, node in nodes.items():
                 try:
-                    value = node.get_value()
+                    data_value = node.get_data_value()
+                    value = data_value.Value.Value
+                    source_ts = data_value.SourceTimestamp
+                    server_ts = data_value.ServerTimestamp
+                    # Prefer source timestamp (PLC), fall back to server timestamp
+                    timestamp = source_ts or server_ts
                     value_float = to_float(value)
 
-                    if value_float is None:
-                        logger.warning("Skipping non-numeric value for node %s: %r", node_id, value)
+                    if value_float is not None:
+                        point = (
+                            Point(measurement)
+                            .tag("machine", machine_tag)
+                            .tag("node_id", node_id)
+                            .field("value", value_float)
+                            .time(timestamp)
+                        )
+                    elif isinstance(value, str):
+                        point = (
+                            Point(measurement)
+                            .tag("machine", machine_tag)
+                            .tag("node_id", node_id)
+                            .field("value_str", value)
+                            .time(timestamp)
+                        )
+                    else:
+                        logger.warning("Skipping unsupported value for node %s: %r", node_id, value)
                         continue
 
-                    point = (
-                        Point(measurement)
-                        .tag("machine", machine_tag)
-                        .tag("node_id", node_id)
-                        .field("value", value_float)
-                        .time(timestamp)
-                    )
                     points.append(point)
                 except Exception as exc:  # noqa: BLE001
                     logger.warning("Failed reading node %s: %s", node_id, exc)

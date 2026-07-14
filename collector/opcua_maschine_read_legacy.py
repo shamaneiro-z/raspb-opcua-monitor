@@ -1,7 +1,5 @@
 import logging
 import sys
-from datetime import datetime, timezone
-
 from opcua import Client
 
 
@@ -31,10 +29,14 @@ def main() -> int:
         logger.info("Connected")
 
         node = client.get_node(OPCUA_NODE_ID)
-        value = node.get_value()
+        data_value = node.get_data_value()
+        value = data_value.Value.Value
+        source_ts = data_value.SourceTimestamp
+        server_ts = data_value.ServerTimestamp
 
         logger.info("Read successful")
-        logger.info("Timestamp (UTC): %s", datetime.now(timezone.utc).isoformat())
+        logger.info("Source timestamp (from PLC):        %s", source_ts)
+        logger.info("Server timestamp (from OPC UA srv): %s", server_ts)
         logger.info("NodeId: %s", OPCUA_NODE_ID)
         logger.info("Value: %r", value)
         return 0
