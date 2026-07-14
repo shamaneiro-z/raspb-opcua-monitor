@@ -1,12 +1,11 @@
+import asyncio
 import logging
 import os
-import time
 from datetime import datetime, timezone
 
-from influxdb_client import InfluxDBClient, Point, WriteOptions
+from asyncua import Client, ua
+from influxdb_client import InfluxDBClient, Point
 from influxdb_client.client.write_api import SYNCHRONOUS
-from opcua import Client
-from opcua import ua
 
 
 logging.basicConfig(
@@ -38,7 +37,7 @@ def to_float(value):
         return None
 
 
-def configure_security(client: Client, mode_name: str, policy_name: str) -> None:
+async def configure_security(client: Client, mode_name: str, policy_name: str) -> None:
     mode_map = {
         "None": ua.MessageSecurityMode.None_,
         "Sign": ua.MessageSecurityMode.Sign,
@@ -52,9 +51,8 @@ def configure_security(client: Client, mode_name: str, policy_name: str) -> None
     mode = mode_map.get(mode_name, ua.MessageSecurityMode.None_)
     policy = policy_map.get(policy_name, ua.SecurityPolicyType.NoSecurity)
 
-    # This prototype assumes anonymous/basic auth and no certificate files.
-    # For production with Sign/SignAndEncrypt, provide cert/key and trust store.
-    client.set_security(policy, certificate_path=None, private_key_path=None, mode=mode)
+    if mode != ua.MessageSecurityMode.None_ or policy != ua.SecurityPolicyType.NoSecurity:
+        client.set_security(policy, certificate_path=None, private_key_path=None, mode=mode)
 
 
 def create_influx_writer(url: str, token: str, org: str):
@@ -63,7 +61,7 @@ def create_influx_writer(url: str, token: str, org: str):
     return influx, write_api
 
 
-def main() -> None:
+async def main() -> None:
     endpoint = env("OPCUA_ENDPOINT", "opc.tcp://127.0.0.1:4840")
     security_mode = env("OPCUA_SECURITY_MODE", "None")
     security_policy = env("OPCUA_SECURITY_POLICY", "None")
@@ -84,7 +82,7 @@ def main() -> None:
 
     client = Client(endpoint)
     if security_mode != "None" or security_policy != "None":
-        configure_security(client, security_mode, security_policy)
+        await configure_security(client, security_mode, security_policy)
 
     if username and password:
         client.set_user(username)
@@ -92,97 +90,80 @@ def main() -> None:
 
     influx_client, influx_writer = create_influx_writer(influx_url, influx_token, influx_org)
 
-    logger.info("Starting OPC UA collector")
+    logger.info("Starting OPC UA collector (async)")
     logger.info("Endpoint: %s", endpoint)
     logger.info("NodeIds: %s", ", ".join(node_ids))
 
     try:
-        client.connect()
-        logger.info("Connected to OPC UA server")
+        async with client:
+            await client.connect()
+            logger.info("Connected to OPC UA server")
 
-        nodes = {node_id: client.get_node(node_id) for node_id in node_ids}
+            nodes = {node_id: await client.get_node(node_id) for node_id in node_ids}
 
-        while True:
-            points = []
+            while True:
+                points = []
 
-            for node_id, node in nodes.items():
-                try:
-                    data_value = node.get_data_value()
-                    value = data_value.Value.Value
-                    source_ts = data_value.SourceTimestamp
-                    server_ts = data_value.ServerTimestamp
-                    # Prefer source timestamp (PLC), fall back to server timestamp
-                    timestamp = source_ts or server_ts
-                    value_float = to_float(value)
+                for node_id, node in nodes.items():
+                    try:
+                        data_value = await node.get_data_value()
+                        value = data_value.Value.Value
+                        source_ts = data_value.SourceTimestamp
+                        server_ts = data_value.ServerTimestamp
+                        # Prefer source timestamp (PLC), fall back to server timestamp
+                        timestamp = source_ts or server_ts
+                        value_float = to_float(value)
 
-                    logger.info(
-                        "Read node=%s value=%r source_ts=%s server_ts=%s",
-                        node_id,
-                        value,
-                        source_ts,
-                        server_ts,
-                    )
+                        if timestamp is not None:
+                            if timestamp.tzinfo is None:
+                                timestamp = timestamp.replace(tzinfo=timezone.utc)
+                            now = datetime.now(timezone.utc)
+                            if timestamp > now:
+                                logger.warning(
+                                    "Node %s timestamp is in the future (%s), defaulting to now",
+                                    node_id,
+                                    timestamp,
+                                )
+                                timestamp = now
+                        else:
+                            timestamp = datetime.now(timezone.utc)
 
-                    if timestamp is not None:
-                        if timestamp.tzinfo is None:
-                            timestamp = timestamp.replace(tzinfo=timezone.utc)
-                        now = datetime.now(timezone.utc)
-                        if timestamp > now:
-                            logger.warning(
-                                "Node %s timestamp is in the future (%s), defaulting to now",
-                                node_id,
-                                timestamp,
+                        if value_float is not None:
+                            point = (
+                                Point(measurement)
+                                .tag("machine", machine_tag)
+                                .tag("node_id", node_id)
+                                .field("value", value_float)
+                                .time(timestamp)
                             )
-                            timestamp = now
-                    else:
-                        timestamp = datetime.now(timezone.utc)
+                        elif isinstance(value, str):
+                            point = (
+                                Point(measurement)
+                                .tag("machine", machine_tag)
+                                .tag("node_id", node_id)
+                                .field("value_str", value)
+                                .time(timestamp)
+                            )
+                        else:
+                            logger.warning("Skipping unsupported value for node %s: %r", node_id, value)
+                            continue
 
-                    if value_float is not None:
-                        point = (
-                            Point(measurement)
-                            .tag("machine", machine_tag)
-                            .tag("node_id", node_id)
-                            .field("value", value_float)
-                            .time(timestamp)
-                        )
-                    elif isinstance(value, str):
-                        point = (
-                            Point(measurement)
-                            .tag("machine", machine_tag)
-                            .tag("node_id", node_id)
-                            .field("value_str", value)
-                            .time(timestamp)
-                        )
-                    else:
-                        logger.warning("Skipping unsupported value for node %s: %r", node_id, value)
-                        continue
+                        points.append(point)
+                    except Exception as exc:  # noqa: BLE001
+                        logger.warning("Failed reading node %s: %s", node_id, exc)
 
-                    points.append(point)
-                except Exception as exc:  # noqa: BLE001
-                    logger.warning("Failed reading node %s: %s", node_id, exc)
+                if points:
+                    influx_writer.write(bucket=influx_bucket, org=influx_org, record=points)
+                    logger.info("Wrote %d points", len(points))
 
-            if points:
-                logger.info(
-                    "Writing %d points to bucket=%s org=%s",
-                    len(points),
-                    influx_bucket,
-                    influx_org,
-                )
-                influx_writer.write(bucket=influx_bucket, org=influx_org, record=points)
-                logger.info("Wrote %d points", len(points))
-
-            time.sleep(max(poll_interval_ms, 100) / 1000.0)
+                await asyncio.sleep(max(poll_interval_ms, 100) / 1000.0)
 
     except Exception as exc:  # noqa: BLE001
         logger.exception("Collector failed: %s", exc)
         raise
     finally:
-        try:
-            client.disconnect()
-        except Exception:  # noqa: BLE001
-            pass
         influx_client.close()
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
