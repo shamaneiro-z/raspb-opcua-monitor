@@ -31,6 +31,9 @@ services:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
       GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_NAME: "Main Org."
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
       INFLUXDB_ORG: ${INFLUXDB_ORG:-rasp-monitor}
       INFLUXDB_BUCKET: ${INFLUXDB_BUCKET:-machine-data}
       INFLUXDB_TOKEN: ${INFLUXDB_TOKEN:-replace-with-strong-token}

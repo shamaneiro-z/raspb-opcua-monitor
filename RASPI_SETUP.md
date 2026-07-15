@@ -49,43 +49,86 @@ Access:
 
 ## 4. Auto-Start on Machine Boot (Optional)
 
-### System Service
+Your stack uses Docker restart policy in `docker-compose.yml`:
 
-```bash
-sudo cp scripts/rasp-monitor.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable rasp-monitor.service
-sudo systemctl start rasp-monitor.service
+```yaml
+restart: unless-stopped
 ```
 
-Check:
+That means once the containers are created and running, Docker will restart them when the daemon starts on boot.
+
+Enable Docker on boot:
 
 ```bash
-sudo systemctl status rasp-monitor.service
+sudo systemctl enable docker
 ```
 
-### Or use Docker restart policy
+Start the stack once:
 
-Already set in `docker-compose.yml`: `restart: unless-stopped` — containers auto-restart on failure and on boot.
+```bash
+docker compose up -d
+```
+
+Verify after reboot:
+
+```bash
+docker compose ps
+docker ps
+```
 
 ## 5. Auto-Open Dashboard (Optional)
 
-If you have a display attached and want fullscreen Grafana:
+If you have a display attached and want fullscreen Grafana, install the official Grafana kiosk binary and run the provided launcher.
+
+> Important: The kiosk script requires X11. Do not run this setup under Wayland.
+
+Chromium translation prompts should be disabled using a managed policy JSON because the kiosk binary does not expose Chromium CLI flags directly.
+
+Create one of these files on the Pi:
+- `/etc/chromium/policies/managed/managed_policies.json`
+- `/etc/opt/chrome/policies/managed/managed_policies.json`
+
+Use this content:
+
+```json
+{
+  "TranslateEnabled": false
+}
+```
+
+If the translation prompt still appears, use:
+
+```json
+{
+  "TranslateEnabled": false,
+  "TranslateAllowedLanguages": "",
+  "TranslateBlockedLanguages": ["*"]
+}
+```
+
+Then restart the kiosk session.
 
 ```bash
-# Install Chromium (if not present)
-sudo apt install chromium-browser  # or: brew install chromium (macOS)
+sudo apt update
+sudo apt install -y unclutter
 
-# Run the kiosk script
+cd ~
+wget https://github.com/grafana/grafana-kiosk/releases/download/v1.0.1/grafana-kiosk-1.0.1.zip
+unzip grafana-kiosk-1.0.1.zip && rm grafana-kiosk-1.0.1.zip
+
+chmod +x scripts/grafana-kiosk.sh
 bash scripts/grafana-kiosk.sh
 ```
 
-Or register as a system service:
+To make it start automatically on boot:
 
 ```bash
 sudo cp scripts/grafana-kiosk.service /etc/systemd/system/
-sudo systemctl enable grafana-kiosk.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now grafana-kiosk.service
 ```
+
+If the kiosk binary is stored in a different folder than expected by the launcher, adjust the `KIOSK_BINARY` path in `scripts/grafana-kiosk.sh` accordingly.
 
 ## Configuration
 

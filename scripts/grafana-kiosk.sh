@@ -1,11 +1,21 @@
 #!/bin/bash
-# Auto-open Grafana dashboard in fullscreen kiosk mode on Raspberry Pi
-# Install as: ~/.config/openbox/autostart or as a systemd user service
-# Or add to /etc/rc.local: sudo -u pi /path/to/grafana-kiosk.sh &
+# Launch the Grafana dashboard with the official Grafana kiosk binary.
+# This script expects the kiosk binary at ~/grafana-kiosk/bin/grafana-kiosk.linux.armv7
 
 set -e
 
-GRAFANA_URL="http://localhost:3000"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+ENV_FILE="$REPO_ROOT/.env"
+
+if [ -f "$ENV_FILE" ]; then
+    set -a
+    # shellcheck disable=SC1090
+    source <(sed 's/\r$//' "$ENV_FILE")
+    set +a
+fi
+
+GRAFANA_URL="${GRAFANA_URL:-http://localhost:3000}"
 GRAFANA_USER="${GRAFANA_ADMIN_USER:-admin}"
 GRAFANA_PASS="${GRAFANA_ADMIN_PASSWORD:-admin}"
 MAX_RETRIES=30
@@ -25,26 +35,34 @@ for i in $(seq 1 $MAX_RETRIES); do
     sleep $RETRY_DELAY
 done
 
-# Optional: Auto-login (create API token in Grafana and use it)
-# For now, just open the public dashboard
-DASHBOARD_URL="$GRAFANA_URL/d/opcua-overview?kiosk=tv&refresh=5s"
+KIOSK_BINARY="$HOME/grafana-kiosk-v1.0.12/grafana-kiosk.linux.arm64"
+if [ ! -x "$KIOSK_BINARY" ]; then
+    echo "Grafana kiosk binary not found at $KIOSK_BINARY"
+    exit 1
+fi
 
-# Kill any existing Chromium instances
-pkill -f chromium-browser || true
-pkill -f /usr/bin/chromium || true
+DASHBOARD_URL="$GRAFANA_URL/d/opcua-overview"
 
-sleep 1
-
-# Start Chromium in kiosk mode
+# Start the Grafana kiosk binary with a deterministic full-screen window.
 echo "Opening Grafana dashboard in kiosk mode..."
-DISPLAY=:0 chromium-browser \
-    --noerrdialogs \
-    --disable-infobars \
-    --disable-session-crashed-bubble \
-    --disable-extensions \
-    --disable-component-update \
-    --disable-default-apps \
-    --disable-preconnect \
-    --kiosk "$DASHBOARD_URL" &
+DISPLAY=:0 "$KIOSK_BINARY" \
+    -URL "$DASHBOARD_URL" \
+    -login-method anon \
+    -kiosk-mode full \
+    -hide-logo \
+    -hide-time-picker \
+    -hide-links \
+    -hide-variables \
+    -window-position 0,0 \
+    -window-size 1920,1080 \
+    -scale-factor 1.0 \
+    -ignore-certificate-errors \
+    -lxde \
+    >/tmp/grafana-kiosk.log 2>&1 &
+
+# Hide the mouse cursor in the graphical session.
+( DISPLAY=:0 xsetroot -cursor_name X_cursor 2>/dev/null || true )
+( DISPLAY=:0 xsetroot -solid black 2>/dev/null || true )
+( DISPLAY=:0 xsetroot -cursor /dev/null 2>/dev/null || true )
 
 echo "✓ Grafana kiosk started"
