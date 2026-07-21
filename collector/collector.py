@@ -9,7 +9,7 @@ from influxdb_client.client.write_api import SYNCHRONOUS
 
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.WARNING,
     format="%(asctime)s %(levelname)s %(message)s",
 )
 logger = logging.getLogger("opcua-collector")
@@ -17,6 +17,21 @@ logger = logging.getLogger("opcua-collector")
 
 def env(name: str, default: str = "") -> str:
     return os.getenv(name, default).strip()
+
+
+def configure_logging() -> None:
+    level_name = env("LOG_LEVEL", "WARNING").upper()
+    level = getattr(logging, level_name, logging.WARNING)
+    logging.getLogger().setLevel(level)
+
+
+def should_log_once_per_interval(last_log_at: dict[str, datetime], key: str, interval_s: int) -> bool:
+    now = datetime.now(timezone.utc)
+    previous = last_log_at.get(key)
+    if previous is None or (now - previous).total_seconds() >= interval_s:
+        last_log_at[key] = now
+        return True
+    return False
 
 
 def parse_node_ids(raw: str) -> list[str]:
@@ -62,6 +77,8 @@ def create_influx_writer(url: str, token: str, org: str):
 
 
 async def main() -> None:
+    configure_logging()
+
     endpoint = env("OPCUA_ENDPOINT", "opc.tcp://127.0.0.1:4840")
     security_mode = env("OPCUA_SECURITY_MODE", "None")
     security_policy = env("OPCUA_SECURITY_POLICY", "None")
@@ -69,6 +86,7 @@ async def main() -> None:
     password = env("OPCUA_PASSWORD")
     node_ids = parse_node_ids(env("OPCUA_NODE_IDS", "ns=2;s=Machine.Temperature"))
     poll_interval_ms = int(env("OPCUA_POLL_INTERVAL_MS", "1000"))
+    warning_interval_s = int(env("LOG_WARNING_INTERVAL_S", "60"))
 
     influx_url = env("INFLUX_URL", "http://influxdb:8086")
     influx_token = env("INFLUX_TOKEN")
@@ -93,6 +111,10 @@ async def main() -> None:
     logger.info("Starting OPC UA collector (async)")
     logger.info("Endpoint: %s", endpoint)
     logger.info("NodeIds: %s", ", ".join(node_ids))
+    logger.info("Warning interval: %ss", warning_interval_s)
+
+    last_log_at: dict[str, datetime] = {}
+    last_written_by_node: dict[str, tuple[str, float | str]] = {}
 
     try:
         async with client:
@@ -102,6 +124,7 @@ async def main() -> None:
 
             while True:
                 points = []
+                pending_last_written_updates: list[tuple[str, tuple[str, float | str]]] = []
 
                 for node_id, node in nodes.items():
                     try:
@@ -118,16 +141,25 @@ async def main() -> None:
                                 timestamp = timestamp.replace(tzinfo=timezone.utc)
                             now = datetime.now(timezone.utc)
                             if timestamp > now:
-                                logger.warning(
-                                    "Node %s timestamp is in the future (%s), defaulting to now",
-                                    node_id,
-                                    timestamp,
-                                )
+                                if should_log_once_per_interval(
+                                    last_log_at,
+                                    f"future_ts:{node_id}",
+                                    warning_interval_s,
+                                ):
+                                    logger.warning(
+                                        "Node %s timestamp is in the future (%s), defaulting to now",
+                                        node_id,
+                                        timestamp,
+                                    )
                                 timestamp = now
                         else:
                             timestamp = datetime.now(timezone.utc)
 
                         if value_float is not None:
+                            current_value_key: tuple[str, float | str] = ("num", value_float)
+                            if last_written_by_node.get(node_id) == current_value_key:
+                                continue
+
                             point = (
                                 Point(measurement)
                                 .tag("machine", machine_tag)
@@ -135,7 +167,12 @@ async def main() -> None:
                                 .field("value", value_float)
                                 .time(timestamp)
                             )
+                            pending_last_written_updates.append((node_id, current_value_key))
                         elif isinstance(value, str):
+                            current_value_key = ("str", value)
+                            if last_written_by_node.get(node_id) == current_value_key:
+                                continue
+
                             point = (
                                 Point(measurement)
                                 .tag("machine", machine_tag)
@@ -143,17 +180,30 @@ async def main() -> None:
                                 .field("value_str", value)
                                 .time(timestamp)
                             )
+                            pending_last_written_updates.append((node_id, current_value_key))
                         else:
-                            logger.warning("Skipping unsupported value for node %s: %r", node_id, value)
+                            if should_log_once_per_interval(
+                                last_log_at,
+                                f"unsupported_value:{node_id}",
+                                warning_interval_s,
+                            ):
+                                logger.warning("Skipping unsupported value for node %s: %r", node_id, value)
                             continue
 
                         points.append(point)
                     except Exception as exc:  # noqa: BLE001
-                        logger.warning("Failed reading node %s: %s", node_id, exc)
+                        if should_log_once_per_interval(
+                            last_log_at,
+                            f"read_error:{node_id}:{type(exc).__name__}",
+                            warning_interval_s,
+                        ):
+                            logger.warning("Failed reading node %s: %s", node_id, exc)
 
                 if points:
                     influx_writer.write(bucket=influx_bucket, org=influx_org, record=points)
-                    logger.info("Wrote %d points", len(points))
+                    for node_id, value_key in pending_last_written_updates:
+                        last_written_by_node[node_id] = value_key
+                    logger.debug("Wrote %d points", len(points))
 
                 await asyncio.sleep(max(poll_interval_ms, 100) / 1000.0)
 
