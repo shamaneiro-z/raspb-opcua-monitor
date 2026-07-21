@@ -45,8 +45,8 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 5,
-        "w": 12,
+        "h": 4,
+        "w": 24,
         "x": 0,
         "y": 0
       },
@@ -109,7 +109,98 @@
             },
             "insertNulls": false,
             "lineInterpolation": "linear",
-            "lineWidth": 2,
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 4
+      },
+      "id": 5,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-main"
+          },
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"${measurement}\")\n  |> filter(fn: (r) => r._field == \"value\")\n  |> filter(fn: (r) => r.machine == \"${machine}\")\n  |> filter(fn: (r) => r.node_id =~ /Temperatur/)\n  |> filter(fn: (r) => r.node_id =~ /Wanne_09/)\n  |> group(columns: [\"node_id\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"mean\")",
+          "refId": "A"
+        }
+      ],
+      "title": "Temperatur Wanne 9",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb-main"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 9,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
             "pointSize": 4,
             "scaleDistribution": {
               "type": "linear"
@@ -145,7 +236,7 @@
         "h": 9,
         "w": 12,
         "x": 12,
-        "y": 0
+        "y": 4
       },
       "id": 2,
       "options": {
@@ -171,7 +262,7 @@
           "refId": "A"
         }
       ],
-      "title": "Leitwert ST10_Wanne_09",
+      "title": "Leitwert Wanne 9",
       "type": "timeseries"
     },
     {
@@ -202,13 +293,9 @@
             "insertNulls": false,
             "lineInterpolation": "linear",
             "lineStyle": {
-              "dash": [
-                0,
-                10
-              ],
-              "fill": "dot"
+              "fill": "solid"
             },
-            "lineWidth": 2,
+            "lineWidth": 1,
             "pointSize": 5,
             "scaleDistribution": {
               "type": "linear"
@@ -238,13 +325,29 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ns=3;s=\"OPCUA_Dataset\".\"Prozessdaten\".\"ST13_Wanne_12\".\"Temperatur_IST\""
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "yellow",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
-        "h": 13,
+        "h": 9,
         "w": 12,
         "x": 0,
-        "y": 5
+        "y": 13
       },
       "id": 1,
       "options": {
@@ -266,11 +369,11 @@
             "type": "influxdb",
             "uid": "influxdb-main"
           },
-          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"${measurement}\")\n  |> filter(fn: (r) => r._field == \"value\")\n  |> filter(fn: (r) => r.machine == \"${machine}\")\n  |> filter(fn: (r) => r.node_id =~ /Temperatur/)\n  |> group(columns: [\"node_id\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"mean\")",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"${measurement}\")\n  |> filter(fn: (r) => r._field == \"value\")\n  |> filter(fn: (r) => r.machine == \"${machine}\")\n  |> filter(fn: (r) => r.node_id =~ /Temperatur/)\n  |> filter(fn: (r) => r.node_id =~ /Wanne_12/)\n  |> group(columns: [\"node_id\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"mean\")",
           "refId": "A"
         }
       ],
-      "title": "Temperature Nodes",
+      "title": "Temperature Wanne 12",
       "type": "timeseries"
     },
     {
@@ -300,7 +403,7 @@
             },
             "insertNulls": false,
             "lineInterpolation": "linear",
-            "lineWidth": 2,
+            "lineWidth": 1,
             "pointSize": 4,
             "scaleDistribution": {
               "type": "linear"
@@ -352,7 +455,7 @@
         "h": 9,
         "w": 12,
         "x": 12,
-        "y": 9
+        "y": 13
       },
       "id": 4,
       "options": {
@@ -378,7 +481,7 @@
           "refId": "A"
         }
       ],
-      "title": "Leitwert ST13_Wanne_12",
+      "title": "Leitwert Wanne 12",
       "type": "timeseries"
     }
   ],
@@ -422,6 +525,6 @@
   "timezone": "browser",
   "title": "OPC UA Machine Overview",
   "uid": "opcua-overview",
-  "version": 16,
+  "version": 17,
   "weekStart": ""
 }
