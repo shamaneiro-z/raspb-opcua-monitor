@@ -1,7 +1,8 @@
 import asyncio
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from asyncua import Client, ua
 from influxdb_client import InfluxDBClient, Point
@@ -137,9 +138,15 @@ async def main() -> None:
                         value_float = to_float(value)
 
                         if timestamp is not None:
-                            if timestamp.tzinfo is None:
-                                timestamp = timestamp.replace(tzinfo=timezone.utc)
                             now = datetime.now(timezone.utc)
+                            #local_tz = datetime.now().astimezone().tzinfo
+
+                            #if timestamp.tzinfo is None:
+                            timestamp = timestamp.replace(tzinfo=ZoneInfo('Europe/Berlin'))  # Assuming the timestamp is in Europe/Berlin timezone
+                            #logger.warning(f'elo')
+
+                            timestamp = timestamp.astimezone(timezone.utc)
+
                             if timestamp > now:
                                 if should_log_once_per_interval(
                                     last_log_at,
