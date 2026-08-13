@@ -1,32 +1,10 @@
 name: rasp-maschine-monitor
 
 services:
-  opcua-timesync:
-    build:
-      context: ./timesync
-    container_name: opcua-timesync
-    restart: "no"
-    cap_add:
-      - SYS_TIME
-    environment:
-      OPCUA_ENDPOINT: ${OPCUA_ENDPOINT:-opc.tcp://192.168.1.100:4840}
-      OPCUA_SECURITY_MODE: ${OPCUA_SECURITY_MODE:-None}
-      OPCUA_SECURITY_POLICY: ${OPCUA_SECURITY_POLICY:-None}
-      OPCUA_USERNAME: ${OPCUA_USERNAME:-}
-      OPCUA_PASSWORD: ${OPCUA_PASSWORD:-}
-      TIME_SYNC_THRESHOLD_S: ${TIME_SYNC_THRESHOLD_S:-2}
-      TIME_SYNC_MAX_RETRIES: ${TIME_SYNC_MAX_RETRIES:-10}
-      TIME_SYNC_RETRY_DELAY_S: ${TIME_SYNC_RETRY_DELAY_S:-5}
-      TIME_SYNC_CONNECT_TIMEOUT_S: ${TIME_SYNC_CONNECT_TIMEOUT_S:-5}
-      TIME_SYNC_REQUIRED: ${TIME_SYNC_REQUIRED:-false}
-
   influxdb:
     image: influxdb:2.7
     container_name: influxdb
     restart: unless-stopped
-    depends_on:
-      opcua-timesync:
-        condition: service_completed_successfully
     ports:
       - "8086:8086"
     environment:
@@ -70,10 +48,7 @@ services:
     container_name: opcua-collector
     restart: unless-stopped
     depends_on:
-      opcua-timesync:
-        condition: service_completed_successfully
-      influxdb:
-        condition: service_started
+      - influxdb
     environment:
       OPCUA_ENDPOINT: ${OPCUA_ENDPOINT:-opc.tcp://192.168.1.100:4840}
       OPCUA_SECURITY_MODE: ${OPCUA_SECURITY_MODE:-None}

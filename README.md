@@ -64,7 +64,6 @@ sudo systemctl enable --now grafana-kiosk.service
 
 ## Overview
 
-- **Time sync**: One-shot service that sets the Raspberry Pi's system clock from the OPC UA server's time before other services start (see [Time Sync](#time-sync-no-internetntp-required) below)
 - **Collector**: Python service polling OPC UA nodes → InfluxDB
 - **InfluxDB**: Time-series database (7-day retention)
 - **Grafana**: Dashboard with 1-hour default view, 5s refresh
@@ -111,20 +110,7 @@ If your Raspberry Pi has no internet, pre-build Python wheels on a machine with 
 bash scripts/build-wheels-offline.sh
 ```
 
-This creates `collector/wheels/` and `timesync/wheels/` with all dependencies. The Dockerfiles automatically use them if present.
-
-## Time Sync (no internet/NTP required)
-
-Raspberry Pis without internet access and without a battery-backed RTC lose the correct time on every reboot. Since the machine's OPC UA server (PLC) already has an accurate clock, the `opcua-timesync` service reads the standard `Server/CurrentTime` node (`ns=0;i=2258`, present on every OPC UA server) and sets the Pi's system clock before InfluxDB/the collector start. This keeps InfluxDB timestamps and Grafana correct without any NTP connectivity.
-
-It runs once per `docker compose up`, needs the `SYS_TIME` Linux capability (already set in `docker-compose.yml`) to change the host clock from inside the container, and retries a few times if the PLC isn't reachable yet.
-
-Relevant `.env` values (all optional, sensible defaults apply):
-- `TIME_SYNC_THRESHOLD_S`: Minimum drift (seconds) before the clock is adjusted (default `2`)
-- `TIME_SYNC_MAX_RETRIES` / `TIME_SYNC_RETRY_DELAY_S`: Retry behavior if the OPC UA server isn't reachable yet (defaults `10` / `5`)
-- `TIME_SYNC_REQUIRED`: Set to `true` to fail startup instead of continuing with the current (possibly wrong) clock if sync never succeeds (default `false`)
-
-Note: this only fixes the *current* boot's clock. It doesn't persist across reboots by itself — consider running `sudo apt install fake-hwclock` (or ensure it's already installed on Raspberry Pi OS) so the clock at least starts close to the last known time before the container fixes it precisely.
+This creates `collector/wheels/` with all dependencies. The Dockerfile automatically uses them if present.
 
 ## Development
 

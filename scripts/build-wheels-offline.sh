@@ -7,20 +7,17 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 WHEELS_DIR="$REPO_ROOT/collector/wheels"
-TIMESYNC_WHEELS_DIR="$REPO_ROOT/timesync/wheels"
 
 echo "Building wheels for offline deployment..."
-mkdir -p "$WHEELS_DIR" "$TIMESYNC_WHEELS_DIR"
+mkdir -p "$WHEELS_DIR"
 
 # Install wheel build tools
 pip install --upgrade pip wheel setuptools
 
 # Build wheels from requirements.txt
 pip wheel --wheel-dir "$WHEELS_DIR" -r "$REPO_ROOT/collector/requirements.txt"
-pip wheel --wheel-dir "$TIMESYNC_WHEELS_DIR" -r "$REPO_ROOT/timesync/requirements.txt"
 
 echo "✓ Wheels built in: $WHEELS_DIR"
-echo "✓ Wheels built in: $TIMESYNC_WHEELS_DIR"
 echo ""
 echo "Next steps:"
 echo "1. Copy the wheels/ directory to your Raspberry Pi"
