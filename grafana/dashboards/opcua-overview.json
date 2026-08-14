@@ -167,7 +167,7 @@
             "type": "influxdb",
             "uid": "influxdb-main"
           },
-          "query": "from(bucket: \"${bucket}\")\n  |> range(start: -24h, stop: now())\n  |> filter(fn: (r) => r._measurement == \"${measurement}\")\n  |> filter(fn: (r) => r._field == \"value\")\n  |> filter(fn: (r) => r.machine == \"${machine}\")\n  |> filter(fn: (r) => r.node_id =~ /Temperatur/)\n  |> filter(fn: (r) => r.node_id =~ /Wanne_09/)\n  |> group(columns: [\"node_id\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: true)\n  |> fill(usePrevious: true)\n  |> yield(name: \"mean\")",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: -24h, stop: now())\n  |> filter(fn: (r) => r._measurement == \"${measurement}\")\n  |> filter(fn: (r) => r._field == \"value\")\n  |> filter(fn: (r) => r.machine == \"${machine}\")\n  |> filter(fn: (r) => r.node_id =~ /Temperatur/)\n  |> filter(fn: (r) => r.node_id =~ /Wanne_09/)\n  |> group(columns: [\"node_id\"])\n  |> aggregateWindow(every: 15s, fn: mean, createEmpty: true)\n  |> fill(usePrevious: true)\n  |> yield(name: \"mean\")",
           "refId": "A"
         }
       ],
@@ -259,7 +259,7 @@
             "type": "influxdb",
             "uid": "influxdb-main"
           },
-          "query": "from(bucket: \"${bucket}\")\n  |> range(start: -24h, stop: now())\n  |> filter(fn: (r) => r._measurement == \"${measurement}\")\n  |> filter(fn: (r) => r._field == \"value\")\n  |> filter(fn: (r) => r.machine == \"${machine}\")\n  |> filter(fn: (r) => r.node_id =~ /ST10_Wanne_09/ )\n  |> filter(fn: (r) => r.node_id =~ /Leitwert/ )\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: true)\n  |> fill(usePrevious: true)\n  |> yield(name: \"mean\")",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: -24h, stop: now())\n  |> filter(fn: (r) => r._measurement == \"${measurement}\")\n  |> filter(fn: (r) => r._field == \"value\")\n  |> filter(fn: (r) => r.machine == \"${machine}\")\n  |> filter(fn: (r) => r.node_id =~ /ST10_Wanne_09/ )\n  |> filter(fn: (r) => r.node_id =~ /Leitwert/ )\n  |> aggregateWindow(every: 15s, fn: mean, createEmpty: true)\n  |> fill(usePrevious: true)\n  |> yield(name: \"mean\")",
           "refId": "A"
         }
       ],
@@ -370,7 +370,7 @@
             "type": "influxdb",
             "uid": "influxdb-main"
           },
-          "query": "from(bucket: \"${bucket}\")\n  |> range(start: -24h, stop: now())\n  |> filter(fn: (r) => r._measurement == \"${measurement}\")\n  |> filter(fn: (r) => r._field == \"value\")\n  |> filter(fn: (r) => r.machine == \"${machine}\")\n  |> filter(fn: (r) => r.node_id =~ /Temperatur/)\n  |> filter(fn: (r) => r.node_id =~ /Wanne_12/)\n  |> group(columns: [\"node_id\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: true)\n  |> fill(usePrevious: true)\n  |> yield(name: \"mean\")",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: -24h, stop: now())\n  |> filter(fn: (r) => r._measurement == \"${measurement}\")\n  |> filter(fn: (r) => r._field == \"value\")\n  |> filter(fn: (r) => r.machine == \"${machine}\")\n  |> filter(fn: (r) => r.node_id =~ /Temperatur/)\n  |> filter(fn: (r) => r.node_id =~ /Wanne_12/)\n  |> group(columns: [\"node_id\"])\n  |> aggregateWindow(every: 15s, fn: mean, createEmpty: true)\n  |> fill(usePrevious: true)\n  |> yield(name: \"mean\")",
           "refId": "A"
         }
       ],
@@ -478,7 +478,7 @@
             "type": "influxdb",
             "uid": "influxdb-main"
           },
-          "query": "from(bucket: \"${bucket}\")\n  |> range(start: -24h, stop: now())\n  |> filter(fn: (r) => r._measurement == \"${measurement}\")\n  |> filter(fn: (r) => r._field == \"value\")\n  |> filter(fn: (r) => r.machine == \"${machine}\")\n  |> filter(fn: (r) => r.node_id =~ /ST13_Wanne_12/ )\n  |> filter(fn: (r) => r.node_id =~ /Leitwert/ )\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: true)\n  |> fill(usePrevious: true)\n  |> yield(name: \"mean\")",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: -24h, stop: now())\n  |> filter(fn: (r) => r._measurement == \"${measurement}\")\n  |> filter(fn: (r) => r._field == \"value\")\n  |> filter(fn: (r) => r.machine == \"${machine}\")\n  |> filter(fn: (r) => r.node_id =~ /ST13_Wanne_12/ )\n  |> filter(fn: (r) => r.node_id =~ /Leitwert/ )\n  |> aggregateWindow(every: 15s, fn: mean, createEmpty: true)\n  |> fill(usePrevious: true)\n  |> yield(name: \"mean\")",
           "refId": "A"
         }
       ],
